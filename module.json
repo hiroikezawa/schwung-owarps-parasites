@@ -1,0 +1,758 @@
+{
+  "id": "owarps_parasites",
+  "name": "oWarps Parasites",
+  "abbrev": "oWARP",
+  "version": "0.1.0",
+  "description": "The nine modes of Matthias Puech's Warps Parasites firmware (binaural Doppler, wavefolder, Chebyschev, frequency shifter, bit mangler, comparator, vocoder, variable-rate tape delay, meta-mode) running the original Mutable Instruments Warps DSP at its native 96 kHz, with a MIX on knob 1",
+  "author": "Hiro Ikezawa",
+  "api_version": 2,
+  "dsp": "owarps_parasites.so",
+  "component_type": "audio_fx",
+  "capabilities": {
+    "chainable": true,
+    "component_type": "audio_fx",
+    "audio_in": true,
+    "audio_out": true,
+    "midi_in": true,
+    "midi_out": false,
+    "chain_params": [
+      {
+        "key": "mix",
+        "name": "Mix",
+        "short_name": "MIX",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 1.0,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "mode",
+        "name": "Mode",
+        "short_name": "MODE",
+        "type": "enum",
+        "options": [
+          "DOPPLER",
+          "WAVEFOLDER",
+          "CHEBYSCHEV",
+          "FREQ SHIFT",
+          "BIT MANGLER",
+          "COMPARATOR",
+          "VOCODER",
+          "DELAY",
+          "META"
+        ],
+        "default": "META"
+      },
+      {
+        "key": "out_level",
+        "name": "Output Level",
+        "short_name": "OUT",
+        "type": "float",
+        "min": -24.0,
+        "max": 12.0,
+        "step": 0.5,
+        "default": 0.0,
+        "unit": "dB",
+        "display_format": "%.1f"
+      },
+      {
+        "key": "routing",
+        "name": "Input Routing",
+        "short_name": "ROUTE",
+        "type": "enum",
+        "options": [
+          "DUAL",
+          "MONO",
+          "CARRIER",
+          "PRESERVE"
+        ],
+        "default": "DUAL"
+      },
+      {
+        "key": "outputs",
+        "name": "Outputs",
+        "short_name": "OUTPUT",
+        "type": "enum",
+        "options": [
+          "MAIN+AUX",
+          "MAIN ONLY"
+        ],
+        "default": "MAIN+AUX"
+      },
+      {
+        "key": "in_gain",
+        "name": "Input Gain",
+        "short_name": "IN",
+        "type": "float",
+        "min": -24.0,
+        "max": 12.0,
+        "step": 0.5,
+        "default": 0.0,
+        "unit": "dB",
+        "display_format": "%.1f"
+      },
+      {
+        "key": "osc_src",
+        "name": "Osc Pitch Source",
+        "short_name": "PITCH",
+        "type": "enum",
+        "options": [
+          "KNOB",
+          "MIDI"
+        ],
+        "default": "KNOB"
+      },
+      {
+        "key": "loop_patch",
+        "name": "Open Loop Patch",
+        "short_name": "PATCH",
+        "type": "enum",
+        "options": [
+          "AUX>IN2",
+          "IN 2"
+        ],
+        "default": "AUX>IN2"
+      },
+      {
+        "key": "bypass",
+        "name": "Bypass",
+        "short_name": "BYPASS",
+        "type": "enum",
+        "options": [
+          "OFF",
+          "ON"
+        ],
+        "default": "OFF"
+      },
+      {
+        "key": "dc_block",
+        "name": "DC Block",
+        "short_name": "DC CUT",
+        "type": "enum",
+        "options": [
+          "ON",
+          "OFF"
+        ],
+        "default": "ON"
+      },
+      {
+        "key": "dop_x",
+        "name": "X Position",
+        "short_name": "X",
+        "type": "float",
+        "min": -1.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.0,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "dop_y",
+        "name": "Y Position",
+        "short_name": "Y",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.25,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "dop_rate",
+        "name": "LFO Rate",
+        "short_name": "LFO RT",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.3,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "dop_amp",
+        "name": "LFO Amount",
+        "short_name": "LFO AM",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.4,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "dop_room",
+        "name": "Room Size",
+        "short_name": "ROOM",
+        "type": "enum",
+        "options": [
+          "TINY",
+          "SMALL",
+          "LARGE",
+          "HUGE"
+        ],
+        "default": "SMALL"
+      },
+      {
+        "key": "fold_amt",
+        "name": "Fold",
+        "short_name": "FOLD",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.5,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "fold_bias",
+        "name": "Bias",
+        "short_name": "BIAS",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.0,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "fold_l1",
+        "name": "Level 1",
+        "short_name": "LEVEL1",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "fold_l2",
+        "name": "Level 2",
+        "short_name": "LEVEL2",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "fold_osc",
+        "name": "Oscillator",
+        "short_name": "OSC",
+        "type": "enum",
+        "options": [
+          "EXT",
+          "SINE",
+          "TRIANGLE",
+          "SAW"
+        ],
+        "default": "EXT"
+      },
+      {
+        "key": "fold_pitch",
+        "name": "Osc Pitch",
+        "short_name": "PITCH",
+        "type": "int",
+        "min": 36,
+        "max": 96,
+        "step": 1,
+        "default": 48,
+        "unit": "st"
+      },
+      {
+        "key": "cheb_order",
+        "name": "Order",
+        "short_name": "ORDER",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.3,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "cheb_gain",
+        "name": "Gain",
+        "short_name": "GAIN",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.5,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "cheb_l1",
+        "name": "Level 1",
+        "short_name": "LEVEL1",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "cheb_l2",
+        "name": "Level 2",
+        "short_name": "LEVEL2",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "cheb_osc",
+        "name": "Oscillator",
+        "short_name": "OSC",
+        "type": "enum",
+        "options": [
+          "EXT",
+          "SINE",
+          "TRIANGLE",
+          "SAW"
+        ],
+        "default": "EXT"
+      },
+      {
+        "key": "cheb_pitch",
+        "name": "Osc Pitch",
+        "short_name": "PITCH",
+        "type": "int",
+        "min": 36,
+        "max": 96,
+        "step": 1,
+        "default": 48,
+        "unit": "st"
+      },
+      {
+        "key": "fs_shift",
+        "name": "Shift",
+        "short_name": "SHIFT",
+        "type": "float",
+        "min": -1.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.25,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "fs_updn",
+        "name": "Up/Down",
+        "short_name": "UP/DN",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.0,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "fs_fdbk",
+        "name": "Feedback",
+        "short_name": "FDBK",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.0,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "fs_wet",
+        "name": "Dry/Wet",
+        "short_name": "DRY/WT",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 1.0,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "fs_car",
+        "name": "Carrier",
+        "short_name": "CARR",
+        "type": "enum",
+        "options": [
+          "IN 1",
+          "SINE",
+          "HARMONIC",
+          "BUZZY"
+        ],
+        "default": "SINE"
+      },
+      {
+        "key": "bit_degr",
+        "name": "Degrade",
+        "short_name": "DEGRD",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.3,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "bit_morph",
+        "name": "Cross Mod",
+        "short_name": "XMOD",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.5,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "bit_l1",
+        "name": "Level 1",
+        "short_name": "LEVEL1",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "bit_l2",
+        "name": "Level 2",
+        "short_name": "LEVEL2",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "bit_osc",
+        "name": "Oscillator",
+        "short_name": "OSC",
+        "type": "enum",
+        "options": [
+          "EXT",
+          "SINE",
+          "TRIANGLE",
+          "SAW"
+        ],
+        "default": "EXT"
+      },
+      {
+        "key": "bit_pitch",
+        "name": "Osc Pitch",
+        "short_name": "PITCH",
+        "type": "int",
+        "min": 36,
+        "max": 96,
+        "step": 1,
+        "default": 48,
+        "unit": "st"
+      },
+      {
+        "key": "cmp_func",
+        "name": "Compare",
+        "short_name": "COMPAR",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.3,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "cmp_order",
+        "name": "Order",
+        "short_name": "ORDER",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.3,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "cmp_l1",
+        "name": "Level 1",
+        "short_name": "LEVEL1",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "cmp_l2",
+        "name": "Level 2",
+        "short_name": "LEVEL2",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "cmp_osc",
+        "name": "Oscillator",
+        "short_name": "OSC",
+        "type": "enum",
+        "options": [
+          "EXT",
+          "SINE",
+          "TRIANGLE",
+          "SAW"
+        ],
+        "default": "EXT"
+      },
+      {
+        "key": "cmp_pitch",
+        "name": "Osc Pitch",
+        "short_name": "PITCH",
+        "type": "int",
+        "min": 36,
+        "max": 96,
+        "step": 1,
+        "default": 48,
+        "unit": "st"
+      },
+      {
+        "key": "voc_warp",
+        "name": "Warp",
+        "short_name": "WARP",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.5,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "voc_rel",
+        "name": "Release",
+        "short_name": "RELEAS",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.3,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "voc_l1",
+        "name": "Carrier Level",
+        "short_name": "LEVEL1",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "voc_l2",
+        "name": "Modulator Level",
+        "short_name": "LEVEL2",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "voc_osc",
+        "name": "Carrier Osc",
+        "short_name": "OSC",
+        "type": "enum",
+        "options": [
+          "EXT",
+          "SAW",
+          "PULSE",
+          "NOISE"
+        ],
+        "default": "SAW"
+      },
+      {
+        "key": "voc_pitch",
+        "name": "Osc Pitch",
+        "short_name": "PITCH",
+        "type": "int",
+        "min": 36,
+        "max": 96,
+        "step": 1,
+        "default": 48,
+        "unit": "st"
+      },
+      {
+        "key": "dl_speed",
+        "name": "Tape Speed",
+        "short_name": "SPEED",
+        "type": "float",
+        "min": -1.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 1.0,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "dl_dist",
+        "name": "Head Distance",
+        "short_name": "DIST",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.5,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "dl_fdbk",
+        "name": "Feedback",
+        "short_name": "FDBK",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.4,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "dl_wet",
+        "name": "Dry/Wet",
+        "short_name": "DRY/WT",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.5,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "dl_topo",
+        "name": "Topology",
+        "short_name": "TOPO",
+        "type": "enum",
+        "options": [
+          "OPEN LOOP",
+          "DUAL",
+          "ANALOG",
+          "PING-PONG"
+        ],
+        "default": "DUAL"
+      },
+      {
+        "key": "meta_algo",
+        "name": "Algorithm",
+        "short_name": "ALGO",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.25,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "meta_timb",
+        "name": "Timbre",
+        "short_name": "TIMBRE",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.5,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "meta_l1",
+        "name": "Level 1",
+        "short_name": "LEVEL1",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "meta_l2",
+        "name": "Level 2",
+        "short_name": "LEVEL2",
+        "type": "float",
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.7,
+        "unit": "%",
+        "display_format": "%.0f"
+      },
+      {
+        "key": "meta_osc",
+        "name": "Oscillator",
+        "short_name": "OSC",
+        "type": "enum",
+        "options": [
+          "EXT",
+          "SIN/SAW",
+          "TRI/PLS",
+          "SAW/NSE"
+        ],
+        "default": "EXT"
+      },
+      {
+        "key": "meta_pitch",
+        "name": "Osc Pitch",
+        "short_name": "PITCH",
+        "type": "int",
+        "min": 36,
+        "max": 96,
+        "step": 1,
+        "default": 48,
+        "unit": "st"
+      }
+    ]
+  }
+}

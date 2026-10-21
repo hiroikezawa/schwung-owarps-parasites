@@ -1,0 +1,44 @@
+--- a/stmlib/dsp/dsp.h
++++ b/stmlib/dsp/dsp.h
+@@ -44,10 +44,32 @@
+   index *= size;
+   MAKE_INTEGRAL_FRACTIONAL(index)
+   float a = table[index_integral];
++  // oWarps Parasites (Schwung port): an index exactly at a table's last entry
++  // (Warps does this with its crossfade tables at 1.0, and with the bit
++  // mangler's four-entry ops[] at 1.0) would read one entry past the end with
++  // weight 0. Same value, without that read.
++  if (index_fractional == 0.0f) return a;
+   float b = table[index_integral + 1];
+   return a + (b - a) * index_fractional;
+ }
+ 
++// oWarps Parasites (Schwung port): float -> int32 the way the Cortex-M4 FPU
++// (VCVT.S32.F32) and AArch64 (FCVTZS) both do it: round toward zero,
++// saturate out-of-range values, NaN -> 0. C++ leaves the out-of-range and NaN
++// cases undefined and x86 answers INT32_MIN for them, so the desktop builds
++// take this explicit form; on ARM it is the plain conversion the firmware
++// was compiled to.
++inline int32_t ArmFloatToInt32(float x) {
++#if defined(__arm__) || defined(__aarch64__)
++  return static_cast<int32_t>(x);
++#else
++  if (x != x) return 0;
++  if (x >= 2147483648.0f) return 2147483647;
++  if (x <= -2147483648.0f) return -2147483647 - 1;
++  return static_cast<int32_t>(x);
++#endif
++}
++
+ inline float InterpolateWrap(const float* table, float index, float size) {
+   index -= static_cast<float>(static_cast<int32_t>(index));
+   index *= size;
+@@ -136,7 +158,7 @@
+ #endif
+ 
+ inline int16_t SoftConvert(float x) {
+-  return Clip16(static_cast<int32_t>(SoftLimit(x * 0.5f) * 32768.0f));
++  return Clip16(ArmFloatToInt32(SoftLimit(x * 0.5f) * 32768.0f));
+ }
+ 
+ }  // namespace stmlib

@@ -1,0 +1,11 @@
+--- a/warps/dsp/oscillator.cc
++++ b/warps/dsp/oscillator.cc
+@@ -80,7 +80,7 @@
+       phase -= 1.0f;
+     }
+     uint32_t modulated_phase = static_cast<uint32_t>(phase * kToUint32);
+-    modulated_phase += static_cast<int32_t>(*modulation++ * kToUint32) * 4;
++    modulated_phase += stmlib::ArmFloatToInt32(*modulation++ * kToUint32) * 4;
+     uint32_t integral = modulated_phase >> 22;
+     float fractional = static_cast<float>(modulated_phase << 10) * kToFloat;
+     float a = lut_sin[integral];

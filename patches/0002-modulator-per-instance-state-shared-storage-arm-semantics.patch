@@ -1,0 +1,349 @@
+--- a/warps/dsp/modulator.h
++++ b/warps/dsp/modulator.h
+@@ -163,8 +163,33 @@
+   inline bool bypass() const { return bypass_; }
+   inline void set_bypass(bool bypass) { bypass_ = bypass; }
+ 
++  // oWarps Parasites (Schwung port): the delay's head distance and tape speed
++  // are smoothed from 0 at power-on (the distance with a ~0.5 s time
++  // constant), so a module that has just been switched on starts with its
++  // tape stopped and glides up to its delay time. A Schwung instance is
++  // "switched on" at every set load; this starts both smoothers where the
++  // knobs are instead (TIMBRE = head distance, ALGORITHM = speed, raw pot
++  // positions 0..1), as though the module had been running.
++  inline void PrimeDelay(float head_distance, float speed_pot) {
++    delay_lp_time_ = head_distance * (DELAY_SIZE-10) + 5;
++    float rate = speed_pot * 2.0f - 1.0f;
++    delay_lp_rate_ = rate * rate * rate;
++  }
++
+   inline FeatureMode feature_mode() const { return feature_mode_; }
+-  inline void set_feature_mode(FeatureMode feature_mode) { feature_mode_ = feature_mode; }
++  inline void set_feature_mode(FeatureMode feature_mode) {
++    // oWarps Parasites (Schwung port): feedback_sample_ lies in the storage
++    // the delay and Doppler modes use as their delay line, so after either
++    // of them it holds two audio samples read as a float - a NaN for many
++    // quiet ones, which the frequency shifter's feedback then keeps for
++    // ever (silence until power-off on the module). Entering the frequency
++    // shifter starts its feedback from zero instead.
++    if (feature_mode == FEATURE_MODE_FREQUENCY_SHIFTER &&
++        feature_mode_ != FEATURE_MODE_FREQUENCY_SHIFTER) {
++      feedback_sample_ = 0.0f;
++    }
++    feature_mode_ = feature_mode;
++  }
+ 
+  private:
+   template<XmodAlgorithm algorithm_1, XmodAlgorithm algorithm_2>
+@@ -264,8 +289,10 @@
+   template<XmodAlgorithm algorithm>
+   static float Xmod(float x_1, float x_2, float parameter);
+ 
++  // oWarps Parasites (Schwung port): not static, so that the Chebyschev
++  // envelope follower (formerly a function-local static) is per instance.
+   template<XmodAlgorithm algorithm>
+-  static float Xmod(float x_1, float x_2, float p_1, float p_2);
++  float Xmod(float x_1, float x_2, float p_1, float p_2);
+ 
+   template<XmodAlgorithm algorithm>
+   static float Xmod(float x_1, float x_2, float p_1, float p_2, float *out_2);
+@@ -288,7 +315,7 @@
+   }
+ 
+   template<XmodAlgorithm algorithm>
+-  static float Mod(float x, float p);
++  float Mod(float x, float p);
+ 
+   static float Diode(float x);
+   
+@@ -313,12 +340,38 @@
+ 
+   stmlib::OnePole filter_[4];
+ 
++  // oWarps Parasites (Schwung port): the former function-local statics of
++  // ProcessDelay, ProcessDoppler and Mod<ALGORITHM_CHEBYSCHEV>.
++  FloatFrame delay_feedback_sample_;
++  int32_t delay_write_head_;
++  float delay_write_position_;
++  FloatFrame delay_previous_samples_[3];
++  float delay_lp_time_;
++  float delay_lp_rate_;
++  size_t doppler_cursor_;
++  float doppler_lfo_phase_;
++  float doppler_distance_;
++  float doppler_angle_;
++  float chebyschev_envelope_;
++
+   /* everything that follows will be used as delay buffer */
++  // oWarps Parasites (Schwung port): the firmware indexes delay_buffer_ past
++  // its end into the members declared after it. The same storage, shared
++  // explicitly: delay_area_ spans exactly those members, in the same order.
++  union {
++  struct {
+   ShortFrame delay_buffer_[8192+4096];  
+   float internal_modulation_[kMaxBlockSize];
+   float buffer_[3][kMaxBlockSize];
+   float src_buffer_[2][kMaxBlockSize * kOversampling];
+   float feedback_sample_;
++  };
++  ShortFrame delay_area_[(sizeof(ShortFrame) * (8192+4096)
++                          + sizeof(float) * kMaxBlockSize
++                          + sizeof(float) * 3 * kMaxBlockSize
++                          + sizeof(float) * 2 * kMaxBlockSize * kOversampling
++                          + sizeof(float)) / sizeof(ShortFrame)];
++  };
+ 
+   enum DelaySize {
+     DELAY_SIZE = (sizeof(delay_buffer_)
+--- a/warps/dsp/modulator.cc
++++ b/warps/dsp/modulator.cc
+@@ -43,6 +43,12 @@
+ 
+ const float kXmodCarrierGain = 0.5f;
+ 
++// oWarps Parasites (Schwung port): see Xmod<ALGORITHM_BITCRUSHER>.
++static inline int32_t CortexM4ShiftLeft(int32_t x, int32_t count) {
++  uint32_t c = static_cast<uint32_t>(count) & 0xff;
++  return c >= 32 ? 0 : static_cast<int32_t>(static_cast<uint32_t>(x) << c);
++}
++
+ void Modulator::Init(float sample_rate) {
+   bypass_ = false;
+   feature_mode_ = FEATURE_MODE_META;
+@@ -72,7 +78,24 @@
+   delay_interpolation_ = INTERPOLATION_HERMITE;
+ 
+   ShortFrame e = {0, 0};
+-  fill(delay_buffer_, delay_buffer_+DELAY_SIZE, e);
++  fill(delay_area_, delay_area_+DELAY_SIZE, e);
++
++  // oWarps Parasites (Schwung port): the initial values of the former
++  // function-local statics of ProcessDelay, ProcessDoppler and
++  // Mod<ALGORITHM_CHEBYSCHEV>.
++  delay_feedback_sample_.l = delay_feedback_sample_.r = 0.0f;
++  delay_write_head_ = 0;
++  delay_write_position_ = 0.0f;
++  for (int32_t i = 0; i < 3; ++i) {
++    delay_previous_samples_[i].l = delay_previous_samples_[i].r = 0.0f;
++  }
++  delay_lp_time_ = 0.0f;
++  delay_lp_rate_ = 0.0f;
++  doppler_cursor_ = 0;
++  doppler_lfo_phase_ = 0.0f;
++  doppler_distance_ = 1.0f;
++  doppler_angle_ = 1.0f;
++  chebyschev_envelope_ = 0.0f;
+ 
+   filter_[0].Init();
+   filter_[1].Init();
+@@ -190,8 +213,8 @@
+     main += wet_dry * (in - main);
+     aux += wet_dry * (in - aux);
+ 
+-    output->l = Clip16(static_cast<int32_t>(main * 32768.0f));
+-    output->r = Clip16(static_cast<int32_t>(aux * 32768.0f));
++    output->l = Clip16(ArmFloatToInt32(main * 32768.0f));
++    output->r = Clip16(ArmFloatToInt32(aux * 32768.0f));
+     ++output;
+     ++input;
+   }
+@@ -254,8 +277,8 @@
+ 
+   // Convert back to integer and clip.
+   while (size--) {
+-    output->l = Clip16(static_cast<int32_t>(*main_output * 32768.0f));
+-    output->r = Clip16(static_cast<int32_t>(*aux_output * 16384.0f));
++    output->l = Clip16(ArmFloatToInt32(*main_output * 32768.0f));
++    output->r = Clip16(ArmFloatToInt32(*aux_output * 16384.0f));
+     ++main_output;
+     ++aux_output;
+     ++output;
+@@ -407,8 +430,8 @@
+ 
+   // Convert back to integer and clip.
+   while (size--) {
+-    output->l = Clip16(static_cast<int32_t>(*main_output * 32768.0f));
+-    output->r = Clip16(static_cast<int32_t>(*aux_output * 16384.0f));
++    output->l = Clip16(ArmFloatToInt32(*main_output * 32768.0f));
++    output->r = Clip16(ArmFloatToInt32(*aux_output * 16384.0f));
+     ++main_output;
+     ++aux_output;
+     ++output;
+@@ -481,8 +504,8 @@
+ 
+   // Convert back to integer and clip.
+   while (size--) {
+-    output->l = Clip16(static_cast<int32_t>(*main_output * 32768.0f));
+-    output->r = Clip16(static_cast<int32_t>(*aux_output * 16384.0f));
++    output->l = Clip16(ArmFloatToInt32(*main_output * 32768.0f));
++    output->r = Clip16(ArmFloatToInt32(*aux_output * 16384.0f));
+     ++main_output;
+     ++aux_output;
+     ++output;
+@@ -552,8 +575,8 @@
+ 
+   // Convert back to integer and clip.
+   while (size--) {
+-    output->l = Clip16(static_cast<int32_t>(*main_output * 32768.0f));
+-    output->r = Clip16(static_cast<int32_t>(*aux_output * 16384.0f));
++    output->l = Clip16(ArmFloatToInt32(*main_output * 32768.0f));
++    output->r = Clip16(ArmFloatToInt32(*aux_output * 16384.0f));
+     ++main_output;
+     ++aux_output;
+     ++output;
+@@ -564,15 +587,17 @@
+ 
+ void Modulator::ProcessDelay(ShortFrame* input, ShortFrame* output, size_t size) {
+ 
+-  ShortFrame *buffer = delay_buffer_;
++  ShortFrame *buffer = delay_area_;
+ 
+-  static FloatFrame feedback_sample;
++  // oWarps Parasites (Schwung port): these were function-local statics (one
++  // module, one Modulator); members now, so instances do not share a tape.
++  FloatFrame& feedback_sample = delay_feedback_sample_;
+ 
+-  static int32_t write_head = 0;
++  int32_t& write_head = delay_write_head_;
+ 
+-  static float write_position = 0.0f;
++  float& write_position = delay_write_position_;
+ 
+-  static FloatFrame previous_samples[3] = {{0.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f}};
++  FloatFrame* previous_samples = delay_previous_samples_;
+ 
+   float time = previous_parameters_.modulation_parameter * (DELAY_SIZE-10) + 5;
+   float time_end = parameters_.modulation_parameter * (DELAY_SIZE-10) + 5;
+@@ -599,10 +624,10 @@
+ 
+   while (size--) {
+ 
+-    static float lp_time = 0.0f;
++    float& lp_time = delay_lp_time_;
+     ONE_POLE(lp_time, time, 0.00002f);
+ 
+-    static float lp_rate;
++    float& lp_rate = delay_lp_rate_;
+     ONE_POLE(lp_rate, rate, 0.007f);
+     float sample_rate = fabsf(lp_rate);
+     CONSTRAIN(sample_rate, 0.001f, 1.0f);
+@@ -683,8 +708,8 @@
+       }
+ 
+       // write this to buffer
+-      buffer[write_head].l = Clip16((s.l) * 32768.0f);
+-      buffer[write_head].r = Clip16((s.r) * 32768.0f);
++      buffer[write_head].l = Clip16(ArmFloatToInt32((s.l) * 32768.0f));
++      buffer[write_head].r = Clip16(ArmFloatToInt32((s.r) * 32768.0f));
+ 
+       write_position += 1.0f / sample_rate;
+ 
+@@ -709,6 +734,15 @@
+     while (index < 0) {
+       index += DELAY_SIZE;
+     }
++    // oWarps Parasites (Schwung port): the read position can also land PAST
++    // the end of the tape - by up to ~10 frames right after a slow-to-fast
++    // speed change, when write_position * sample_rate exceeds the smoothed
++    // head distance (it does at power-on, where lp_time starts from 0). The
++    // firmware then reads whatever RAM follows the buffer; this wraps it
++    // round the loop the way the lower bound already is.
++    while (index >= DELAY_SIZE) {
++      index -= DELAY_SIZE;
++    }
+ 
+     MAKE_INTEGRAL_FRACTIONAL(index);
+ 
+@@ -757,15 +791,15 @@
+       // if open feedback loop, AUX is the wet signal and OUT
+       // crossfades between inputs
+       in.r = static_cast<float>(input->r) / 32768.0f;
+-      output->l = Clip16((fade_out * in.l + fade_in * in.r) * 32768.0f);
+-      output->r = Clip16(wet.r * 32768.0f);
++      output->l = Clip16(ArmFloatToInt32((fade_out * in.l + fade_in * in.r) * 32768.0f));
++      output->r = Clip16(ArmFloatToInt32(wet.r * 32768.0f));
+     } else if (parameters_.carrier_shape == 2) {
+       // analog mode -> soft-clipping
+       output->l = SoftConvert((fade_out * in.l + fade_in * wet.l) * 2.0f);
+       output->r = SoftConvert((fade_out * in.r + fade_in * wet.r) * 2.0f);
+     } else {
+-      output->l = Clip16((fade_out * in.l + fade_in * wet.l) * 32768.0f);
+-      output->r = Clip16((fade_out * in.r + fade_in * wet.r) * 32768.0f);
++      output->l = Clip16(ArmFloatToInt32((fade_out * in.l + fade_in * wet.l) * 32768.0f));
++      output->r = Clip16(ArmFloatToInt32((fade_out * in.r + fade_in * wet.r) * 32768.0f));
+     }
+ 
+     feedback += feedback_increment;
+@@ -780,12 +814,13 @@
+ }
+ 
+ void Modulator::ProcessDoppler(ShortFrame* input, ShortFrame* output, size_t size) {
+-  ShortFrame *buffer = delay_buffer_;
++  ShortFrame *buffer = delay_area_;
+ 
+-  static size_t cursor = 0;
+-  static float lfo_phase = 0.0f;
+-  static float distance = 1.0f;
+-  static float angle = 1.0f;
++  // oWarps Parasites (Schwung port): function-local statics -> members.
++  size_t& cursor = doppler_cursor_;
++  float& lfo_phase = doppler_lfo_phase_;
++  float& distance = doppler_distance_;
++  float& angle = doppler_angle_;
+ 
+   float x = previous_parameters_.raw_algorithm * 2.0f - 1.0f;
+   float x_end = parameters_.raw_algorithm * 2.0f - 1.0f;
+@@ -964,7 +999,8 @@
+   const float att = 0.01f;
+   const float rel = 0.000005f;
+ 
+-  static float envelope_;
++  // oWarps Parasites (Schwung port): function-local static -> member.
++  float& envelope_ = chebyschev_envelope_;
+ 
+ 
+   SLOPE(envelope_, fabs(x), att, rel);
+@@ -1044,8 +1080,8 @@
+ template<>
+ inline float Modulator::Xmod<ALGORITHM_XOR>(
+     float x_1, float x_2, float parameter) {
+-  short x_1_short = Clip16(static_cast<int32_t>(x_1 * 32768.0f));
+-  short x_2_short = Clip16(static_cast<int32_t>(x_2 * 32768.0f));
++  short x_1_short = Clip16(ArmFloatToInt32(x_1 * 32768.0f));
++  short x_2_short = Clip16(ArmFloatToInt32(x_2 * 32768.0f));
+   float mod = static_cast<float>(x_1_short ^ x_2_short) / 32768.0f;
+   float sum = (x_1 + x_2) * 0.7f;
+   return sum + (mod - sum) * parameter;
+@@ -1055,15 +1091,15 @@
+ template<>
+ inline float Modulator::Xmod<ALGORITHM_BITCRUSHER>(
+     float x_1, float x_2, float p_1, float p_2, float *y_2) {
+-  short x_1_short = Clip16(static_cast<int32_t>(x_1 * 32768.0f));
+-  short x_2_short = Clip16(static_cast<int32_t>(x_2 * 32768.0f));
++  short x_1_short = Clip16(ArmFloatToInt32(x_1 * 32768.0f));
++  short x_2_short = Clip16(ArmFloatToInt32(x_2 * 32768.0f));
+ 
+   const float steps = 37.0f;
+   float z = p_1 * p_1 * steps;
+   MAKE_INTEGRAL_FRACTIONAL(z);
+ 
+-  short z_short_1 = Clip16(static_cast<int32_t>(z_integral/steps * 32768.0f));
+-  short z_short_2 = Clip16(static_cast<int32_t>((z_integral + 1.0f)/steps * 32768.0f));
++  short z_short_1 = Clip16(ArmFloatToInt32(z_integral/steps * 32768.0f));
++  short z_short_2 = Clip16(ArmFloatToInt32((z_integral + 1.0f)/steps * 32768.0f));
+ 
+   short x_1_mod_1 = x_1_short | z_short_1;
+   short x_1_mod_2 = x_1_short | z_short_2;
+@@ -1079,7 +1115,11 @@
+   ops[0] = static_cast<float>(x_1_mod + x_2_mod) / 32768.0f;
+   ops[1] = static_cast<float>(x_1_mod | x_2_mod) / 32768.0f;
+   ops[2] = static_cast<float>(x_1_mod ^ x_2_mod) / 32768.0f;
+-  ops[3] = static_cast<float>(x_1_mod << (x_2_mod >> 12)) / 32768.0f;
++  // oWarps Parasites (Schwung port): x_2_mod >> 12 is -8..7, and the original
++  // shifts by it as is. The Cortex-M4's LSL-by-register takes the bottom byte
++  // of the count (a negative count is >= 32 and gives 0); AArch64's takes it
++  // modulo 32 (-8 would shift by 24). This spells out the Cortex-M4 result.
++  ops[3] = static_cast<float>(CortexM4ShiftLeft(x_1_mod, x_2_mod >> 12)) / 32768.0f;
+   return Interpolate(ops, p_2, 3.0f);
+ }
+ 

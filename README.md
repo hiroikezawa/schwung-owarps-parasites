@@ -1,39 +1,40 @@
 # oWarps Parasites
 
-Ableton Move 上の Schwung で動く Audio FX モジュールです。Matthias Puech 氏による
-Mutable Instruments Warps のカスタムファームウェア **Warps Parasites** の 9 モードを、
-**オリジナルの DSP コードをそのまま**、Warps 本来の 96 kHz で動かします。
+**English** | [日本語](README.ja.md)
 
-- モジュール ID: `owarps_parasites`（DSP は `owarps_parasites.so`）
-- 種別: `audio_fx`（トラックのスロット、Master FX、バスのインサートで使えます）
-- バージョン: 0.1.0
-- 作者: Hiro Ikezawa
+An Audio FX module for Schwung on Ableton Move. It runs the 9 modes of
+**Warps Parasites**, Matthias Puech's custom firmware for Mutable Instruments
+Warps, **with the original DSP code as it is**, at Warps' own 96 kHz.
 
-Warps 風の新しいエフェクトではありません。Parasites のソース
-（https://github.com/mqtthiqs/parasites の `warps/`）を取り込み、
-**元のファームウェアとビット単位で同じ出力**になることをテストで確認しています
-（下記「テスト」）。
+- Module ID: `owarps_parasites` (the DSP is `owarps_parasites.so`)
+- Type: `audio_fx` (usable in a track slot, in Master FX and as a bus insert)
+- Version: 0.1.0
+- Author: Hiro Ikezawa
 
-## 9 つのモード
+This is not a new Warps-like effect. It takes in the Parasites source
+(`warps/` in https://github.com/mqtthiqs/parasites), and tests confirm that
+**its output is bit-identical to the original firmware's** (see "Tests" below).
 
-| # | モード | 内容 |
+## The 9 modes
+
+| # | Mode | What it is |
 |---|---|---|
-| 1 | DOPPLER | バイノーラル・ドップラー・パンナー。音源の X/Y 位置、両耳の到達時間差（±1.5 ms）、距離による減衰、実際の遅延線の長さが変わることによるドップラーのピッチ変化。LFO で音源が円を描いて回ります。入力 1 と 2 は頭の反対側に置かれます。 |
-| 2 | WAVEFOLDER | ウェーブフォールダー（Warps のフォールドテーブル）。FOLD = 折り返し量、BIAS = 入力バイアス。 |
-| 3 | CHEBYSCHEV | チェビシェフ多項式によるウェーブシェイパー。ORDER = 次数（0〜16、次数の間は連続的に補間）、GAIN。 |
-| 4 | FREQ SHIFT | 周波数シフター（ヒルベルト変換＋直交発振器）。SHIFT = シフト量（正負）、UP/DN = 上側／下側のクロスフェード、FDBK = フィードバック、DRY/WT = 内部のドライ／ウェット。 |
-| 5 | BIT MANGLER | 2 入力のビット劣化。DEGRD = ビット劣化、XMOD = 和 → OR → XOR → シフトのモーフィング。AUX も劣化します。 |
-| 6 | COMPARATOR | 8 種類の比較関数のモーフィング（両入力の和から始まる）＋ チェビシェフ・ウェーブシェイパー。COMPAR = 比較関数、ORDER = 次数。 |
-| 7 | VOCODER | 20 バンドのボコーダー（Warps のフィルターバンク）。WARP = フォルマントのワープ、RELEAS = リリース時間。入力 1 がキャリア、入力 2 がモジュレーター。 |
-| 8 | DELAY | 可変速テープディレイ。SPEED = テープ速度と方向（+100% が順方向最速、0 で停止、マイナスで逆走）、DIST = 読み書きヘッドの距離、FDBK = フィードバック、DRY/WT。TOPO で 4 つのトポロジー（下記）。 |
-| 9 | META | オリジナル Warps のメインモード（クロスフェード → フォールド → アナログ・リングモジュレーション → デジタル・リングモジュレーション → XOR → コンパレーター → ボコーダーの連続モーフィング）。ALGO と TIMBRE。 |
+| 1 | DOPPLER | A binaural Doppler panner: the source's X/Y position, the interaural time difference (±1.5 ms), distance attenuation, and the Doppler pitch shift that comes from real delay lines changing length. An LFO makes the source circle around. Inputs 1 and 2 sit on opposite sides of the head. |
+| 2 | WAVEFOLDER | A wavefolder (Warps' fold table). FOLD = fold amount, BIAS = input bias. |
+| 3 | CHEBYSCHEV | A waveshaper built from Chebyshev polynomials. ORDER = order (0–16, interpolated continuously between orders), GAIN. |
+| 4 | FREQ SHIFT | A frequency shifter (Hilbert transform + quadrature oscillator). SHIFT = shift amount (positive or negative), UP/DN = crossfade between upper and lower sidebands, FDBK = feedback, DRY/WT = internal dry/wet. |
+| 5 | BIT MANGLER | Two-input bit degradation. DEGRD = bit degradation, XMOD = morph through sum → OR → XOR → shift. AUX is degraded too. |
+| 6 | COMPARATOR | A morph through 8 comparison functions (starting from the sum of both inputs) + a Chebyshev waveshaper. COMPAR = comparison function, ORDER = order. |
+| 7 | VOCODER | A 20-band vocoder (Warps' filter bank). WARP = formant warp, RELEAS = release time. Input 1 is the carrier, input 2 the modulator. |
+| 8 | DELAY | A variable-speed tape delay. SPEED = tape speed and direction (+100 % is fastest forwards, 0 stops, negative runs backwards), DIST = distance between the read and write heads, FDBK = feedback, DRY/WT. TOPO picks one of 4 topologies (below). |
+| 9 | META | The original Warps' main mode (a continuous morph through crossfade → fold → analog ring modulation → digital ring modulation → XOR → comparator → vocoder). ALGO and TIMBRE. |
 
-### ノブ（Move の 8 ノブ）
+### Knobs (Move's 8 knobs)
 
-画面には**今のモードのページだけ**が出ます。どのモードでも **ノブ 1 = MIX**、
-**ノブ 8 = MODE** です。MODE を回すと、そのモードのページに切り替わります。
+The screen shows **only the page of the current mode**. In every mode
+**knob 1 = MIX** and **knob 8 = MODE**. Turning MODE switches to that mode's page.
 
-| モード | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| Mode | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 |---|---|---|---|---|---|---|---|---|
 | DOPPLER | MIX | X | Y | LFO RT | LFO AM | ROOM | OUT | MODE |
 | WAVEFOLDER | MIX | FOLD | BIAS | LEVEL1 / PITCH | LEVEL2 | OSC | OUT | MODE |
@@ -45,228 +46,246 @@ Warps 風の新しいエフェクトではありません。Parasites のソー�
 | DELAY | MIX | SPEED | DIST | FDBK | DRY/WT | TOPO | OUT | MODE |
 | META | MIX | ALGO | TIMBRE | LEVEL1 / PITCH | LEVEL2 | OSC | OUT | MODE |
 
-- ノブ 2 は Warps の大きいノブ（ALGORITHM）、ノブ 3 は小さいノブ（TIMBRE）、ノブ 4・5 は
-  LEVEL 1・2 のポット、ノブ 6 は Warps のボタンです（モードごとに意味が違います）。
-- 値はすべて Warps のポットの位置として保存され、ファームウェアと同じポットカーブ
-  （ALGORITHM のデテント）と平滑化（1 秒あたり 1600 回）を通ります。
-- 各モードの設定はモードごとに別々に保存されます。モードを切り替えて戻ると元の設定に戻ります。
-  （実機の Warps ではボタンの状態は全モード共通ですが、ここではモードごとです。）
-- ジョグを回すと **Settings** ページ: ROUTE, OUTPUT, IN, PITCH（ピッチの元）, PATCH,
-  DC CUT, BYPASS。
+- Knob 2 is Warps' big knob (ALGORITHM), knob 3 the small knob (TIMBRE), knobs 4
+  and 5 the LEVEL 1 and 2 pots, and knob 6 Warps' button (its meaning differs per
+  mode).
+- Every value is saved as a Warps pot position and goes through the same pot
+  curve (ALGORITHM's detents) and smoothing (1600 times a second) as the firmware.
+- Each mode's settings are saved separately. Switching modes and coming back
+  restores the previous settings. (On the real Warps the button state is shared
+  by all modes; here it is per mode.)
+- Turn the jog wheel for the **Settings** page: ROUTE, OUTPUT, IN, PITCH (pitch
+  source), PATCH, DC CUT, BYPASS.
 
-仕様書の「初期パラメータ割当」との違い: Warps 自体に存在しない「Input Level」
-「Input Balance」「Carrier Level」は、Warps の実際のコントロールである LEVEL 1 / LEVEL 2
-（入力 1・2 のレベル。ボコーダーでは入力 1 = キャリア）にしています。Doppler の
-LFO 振幅、周波数シフターのドライ／ウェット、ディレイのドライ／ウェットとトポロジー、
-Warps のボタンは、同じページのノブ 5〜6 にあります。
+Differences from the specification's "initial parameter assignment": "Input
+Level", "Input Balance" and "Carrier Level", which do not exist on Warps itself,
+are mapped to Warps' real controls LEVEL 1 / LEVEL 2 (the levels of inputs 1 and
+2; in the vocoder input 1 = carrier). Doppler's LFO amount, the frequency
+shifter's dry/wet, the delay's dry/wet and topology, and Warps' button are on
+knobs 5–6 of the same page.
 
-### 内蔵オシレーター
+### Internal oscillator
 
-OSC（ノブ 6）が EXT 以外のとき、入力 1 の代わりに Warps の内蔵オシレーターが
-キャリアになります（WAVEFOLDER / CHEBYSCHEV / BIT MANGLER / COMPARATOR: SINE・
-TRIANGLE・SAW、VOCODER: SAW・PULSE・NOISE、META: クロスモジュレーション側と
-ボコーダー側で別の波形、FREQ SHIFT: SINE・HARMONIC・BUZZY の直交波形テーブル）。
+When OSC (knob 6) is anything other than EXT, Warps' internal oscillator
+becomes the carrier in place of input 1 (WAVEFOLDER / CHEBYSCHEV / BIT MANGLER /
+COMPARATOR: SINE, TRIANGLE, SAW; VOCODER: SAW, PULSE, NOISE; META: different
+waveforms for the cross-modulation side and the vocoder side; FREQ SHIFT: the
+SINE, HARMONIC and BUZZY quadrature wavetables).
 
-- このとき**入力 1 はオシレーターの位相変調入力**になります（オリジナルどおり）。
-- 実機では LEVEL 1 のポットがオシレーターのピッチも兼ねています。ここではオシレーターを
-  入れるとノブ 4 が **PITCH**（MIDI ノート番号 36〜96。実機の LEVEL 1 ポットの範囲）に
-  切り替わります。
-- Settings の PITCH を **MIDI** にすると、そのトラックで演奏されたノートでピッチが決まり
-  ます（ノブの PITCH を中央 C とした移調。ファームウェアが LEVEL 1 の V/Oct CV を扱うのと
-  同じ追従：0.4 半音を超える跳躍は即座に、それ以下は滑らかに）。MIDI はトラックの
-  スロットで受け取れます。Schwung 1.7.3 の Master FX には MIDI が届かないため、
-  Master FX ではノブのピッチだけが使えます。
+- **Input 1 then becomes the oscillator's phase-modulation input** (as in the original).
+- On the hardware the LEVEL 1 pot doubles as the oscillator's pitch. Here, with
+  the oscillator on, knob 4 switches to **PITCH** (MIDI note 36–96, the range of
+  the hardware's LEVEL 1 pot).
+- With Settings → PITCH set to **MIDI**, notes played on that track set the pitch
+  (transposed with the knob's PITCH as middle C; the same tracking as the
+  firmware uses for LEVEL 1's V/Oct CV: jumps over 0.4 semitone at once, smaller
+  ones smoothly). MIDI arrives in a track slot. Schwung 1.7.3's Master FX
+  receives no MIDI, so in Master FX only the knob's pitch is available.
 
-### DELAY のトポロジー（TOPO）
+### DELAY topologies (TOPO)
 
-| TOPO | 内容 |
+| TOPO | What it is |
 |---|---|
-| OPEN LOOP | 実機ではパッチケーブルで AUX → IN 2 を外部ループにするモード（下記）。 |
-| DUAL | 2 チャンネルが同じディレイ時間を共有するデュアル・ディレイ。 |
-| ANALOG | フィードバックにフィルター、軽い歪み、ヒスノイズが入るアナログ風。 |
-| PING-PONG | 各チャンネルのフィードバックが反対側へ。 |
+| OPEN LOOP | On the hardware, the mode where a patch cable makes AUX → IN 2 an external loop (below). |
+| DUAL | A dual delay whose two channels share one delay time. |
+| ANALOG | Analog-style, with a filter, light distortion and hiss in the feedback. |
+| PING-PONG | Each channel's feedback goes to the other side. |
 
-**OPEN LOOP と外部パッチ**: 実機では IN 1 が入力、OUT が出力、AUX がフィードバックの
-出口、IN 2 がフィードバックの入口で、その間に好きなモジュールをパッチします。Move では
-外部にパッチできないため、Settings の **PATCH** で選びます。
+**OPEN LOOP and the external patch**: on the hardware IN 1 is the input, OUT the
+output, AUX the feedback send and IN 2 the feedback return, and you patch any
+module between them. Move cannot patch externally, so you choose with Settings
+→ **PATCH**.
 
-- `AUX>IN2`（初期値）: AUX をそのまま IN 2 に戻す内部ループ。実機で AUX と IN 2 を
-  ケーブル 1 本でつないだのと同じですが、ループには Warps の 1 ブロック（60 サンプル、
-  0.625 ms）の遅れが入ります（実機のコーデックの往復遅延とは同じではありません）。
-- `IN 2`: IN 2 は通常どおり入力の右チャンネル（ROUTE に従う）。外部ループの代わりに
-  任意の音を IN 2 に入れたいとき。
+- `AUX>IN2` (default): an internal loop returning AUX straight to IN 2. The same
+  as joining AUX and IN 2 with one cable on the hardware, except that the loop
+  has one Warps block (60 samples, 0.625 ms) of delay (not the same as the
+  hardware codec's round-trip delay).
+- `IN 2`: IN 2 is the input's right channel as usual (following ROUTE). For when
+  you want some other sound in IN 2 instead of an external loop.
 
-## 入出力とルーティング（Settings → ROUTE / OUTPUT）
+## Inputs, outputs and routing (Settings → ROUTE / OUTPUT)
 
-| ROUTE | 入力 1 | 入力 2 | 出力 |
+| ROUTE | Input 1 | Input 2 | Output |
 |---|---|---|---|
-| DUAL（初期値） | 左 | 右 | 左 = MAIN、右 = AUX |
-| MONO | (L+R)/2 | (L+R)/2 | 同上 |
-| CARRIER | 未接続（無音） | (L+R)/2 | 同上 |
-| PRESERVE | 左右それぞれに独立した Warps を 1 台ずつ | | 左 = 左の Warps の MAIN、右 = 右の Warps の MAIN |
+| DUAL (default) | Left | Right | Left = MAIN, right = AUX |
+| MONO | (L+R)/2 | (L+R)/2 | As above |
+| CARRIER | Unplugged (silent) | (L+R)/2 | As above |
+| PRESERVE | One independent Warps each for left and right | | Left = left Warps' MAIN, right = right Warps' MAIN |
 
-- **DUAL**: Warps の 2 入力 2 出力そのものです。左右の素材が「2 つの別の信号」として
-  掛け合わされます。右の出力は AUX なので、モードによってはドライに近い信号や
-  オシレーターになります（オリジナルの AUX の仕様。例えば WAVEFOLDER の AUX は
-  入力の和、オシレーター使用時はオシレーター）。両方に MAIN を出したいときは
-  OUTPUT を **MAIN ONLY** にします。
-- **CARRIER**: 素材を入力 2（モジュレーター）にだけ入れ、入力 1 を空ける。OSC を
-  入れたときに「素材を内蔵オシレーターで変調する」使い方になります。入力 1 が
-  キャリア・入力そのものになる FREQ SHIFT（CARR = IN 1）と DELAY の OPEN LOOP は、
-  この設定では入力がなく鳴りません。
-- **PRESERVE**: ステレオの定位を残したいとき。Warps を 2 台使い（PC での計測で CPU は約 1.3〜1.6 倍）、
-  各チャンネルを独立に処理します。OSC 使用時は各チャンネルが入力 2、入力 1 は未接続。
-  **DOPPLER と DELAY では PRESERVE でも 1 台の DUAL のまま**です（この 2 つは 2 入力
-  2 出力の結合そのものが定位・ステレオなので、分けると意味が変わるため）。
+- **DUAL**: Warps' own two inputs and two outputs. The left and right material are
+  combined as "two separate signals". The right output is AUX, so in some modes it
+  carries something close to the dry signal or the oscillator (how the original's
+  AUX works: for example WAVEFOLDER's AUX is the sum of the inputs, or the
+  oscillator when it is in use). To get MAIN on both, set OUTPUT to **MAIN ONLY**.
+- **CARRIER**: the material goes only into input 2 (the modulator) and input 1 is
+  left empty. With OSC on, this becomes "modulate the material with the internal
+  oscillator". FREQ SHIFT (CARR = IN 1) and DELAY's OPEN LOOP, where input 1 is
+  the carrier or the input itself, have no input in this setting and are silent.
+- **PRESERVE**: for keeping stereo placement. It uses two Warps (CPU about
+  1.3–1.6× as measured on a PC) and processes each channel independently. With
+  OSC, each channel is input 2 and input 1 is unplugged. **DOPPLER and DELAY stay
+  a single DUAL even in PRESERVE** (in those two the coupling of two inputs and
+  two outputs is itself the placement/stereo, so splitting them changes the meaning).
 
-モノラル素材: Move のトラック音声は左右同じ信号なので、DUAL でも両入力に同じ音が入ります
-（MONO と同じ結果）。
+Mono material: a Move track's audio is the same signal on both sides, so even in
+DUAL both inputs get the same sound (the same result as MONO).
 
-**IN**（入力ゲイン）: 初期値 0 dB（Move のフルスケール = Warps の入力のフルスケール、
-16 Vpp）。ユーロラックの 10 Vpp 相当にしたいときは -4 dB 程度です。
+**IN** (input gain): default 0 dB (Move's full scale = Warps' input full scale,
+16 Vpp). For the equivalent of Eurorack's 10 Vpp use about -4 dB.
 
 ## MIX
 
-- ノブ 1。0〜100% のリニア・クロスフェード（約 10 ms の平滑化付き）。
-- 0% = ドライ（入力そのもの）、100% = ウェットのみ。初期値 100%。
-- FREQ SHIFT と DELAY の内部ドライ／ウェット（実機の LEVEL 2）は別のノブとして残してあり、
-  MIX はその後ろの最終段です。
-- ウェット側は 44.1 kHz → 96 kHz → 44.1 kHz のリサンプリングと Warps の 60 サンプル単位の
-  処理を通るため、全体で **103 サンプル（2.34 ms）** 遅れます。この往復を**ちょうど整数
-  サンプル**になるようにフィルターを設計し、ドライも同じ 103 サンプル遅らせているので、
-  MIX の途中でも位相ずれによる打ち消し（コムフィルター）は起きません。MIX 0% の出力は、
-  入力を 103 サンプル遅らせたものとビット単位で同じです（テストで確認）。
-- OUT（ノブ 7）はウェットのレベル（-24〜+12 dB）。MIX 0% には影響しません。
+- Knob 1. A linear crossfade from 0 to 100 % (with about 10 ms of smoothing).
+- 0 % = dry (the input itself), 100 % = wet only. Default 100 %.
+- FREQ SHIFT's and DELAY's internal dry/wet (the hardware's LEVEL 2) are kept as
+  separate knobs, and MIX is the final stage after them.
+- The wet side goes through resampling 44.1 kHz → 96 kHz → 44.1 kHz and Warps'
+  processing in 60-sample units, so it is **103 samples (2.34 ms)** late overall.
+  The filters are designed so that this round trip is **exactly a whole number of
+  samples**, and the dry is delayed by the same 103 samples, so no cancellation
+  from phase offset (comb filtering) happens anywhere along MIX. The output at
+  MIX 0 % is bit-identical to the input delayed by 103 samples (checked in tests).
+- OUT (knob 7) is the wet level (-24 to +12 dB). It has no effect at MIX 0 %.
 
 ## DC CUT
 
-Warps の出力はコンデンサ結合（AC 結合）なので、実機から DC は出ません。一方 DSP そのものは
-CHEBYSCHEV（偶数次の多項式）、BIT MANGLER（ビットの OR）、COMPARATOR などで、無音の
-入力に対しても直流を出します。そのため実機の出力段に相当する 2 Hz の 1 次ハイパス
-フィルターをウェットにかけています（Settings → DC CUT、初期値 ON）。OFF にすると
-DSP の出力そのものになります。
+Warps' outputs are capacitor-coupled (AC-coupled), so the hardware puts out no
+DC. The DSP itself, however, puts out DC even for silent input in CHEBYSCHEV
+(even-order polynomials), BIT MANGLER (bitwise OR), COMPARATOR and others. So a
+first-order 2 Hz high-pass, standing in for the hardware's output stage, is
+applied to the wet (Settings → DC CUT, default ON). With it OFF you get the DSP's
+output as it is.
 
-## バイパス・クリック対策
+## Bypass and click prevention
 
-- **BYPASS**（Settings）: ON で出力はドライ（MIX 0% と同じ、遅延 103 サンプル）に約 10 ms
-  でクロスフェードします。Schwung 自体のバイパス（Mute + ジョグクリック）も使えます。
-- MODE、ROUTE、OUTPUT、ボタン（OSC / ROOM / TOPO / CARR）、PATCH の変更は、ウェットを
-  5 ms でフェードアウト → 切替 → 5 ms でフェードインします（実機は切替時にフェード
-  しませんが、Move の出力でクリックにならないよう追加しました）。
-- テープ速度・方向・ヘッド距離・フィードバックなど、連続的なノブの動きには何も足して
-  いません。ファームウェア自身の平滑化（テープ速度は 1 サンプルあたり 0.007、ヘッド距離は
-  約 0.5 秒）がそのまま Parasites のテープの挙動です。
+- **BYPASS** (Settings): when ON the output crossfades to the dry (the same as
+  MIX 0 %, 103 samples late) over about 10 ms. Schwung's own bypass (Mute + jog
+  click) also works.
+- Changes of MODE, ROUTE, OUTPUT, the button (OSC / ROOM / TOPO / CARR) and PATCH
+  fade the wet out over 5 ms → switch → fade back in over 5 ms (the hardware does
+  not fade on a switch, but this was added so Move's output does not click).
+- Nothing is added to continuous knob movements such as tape speed, direction,
+  head distance and feedback. The firmware's own smoothing (0.007 per sample for
+  tape speed, about 0.5 s for head distance) is Parasites' tape behaviour as it is.
 
-## オリジナルとの違い（すべて）
+## Every difference from the original
 
-DSP の出力が変わる違いは次のものだけです。それ以外はオリジナルとビット単位で同じです。
+Only these differences change the DSP's output. Everything else is bit-identical
+to the original.
 
-1. **サンプルレート変換**: Warps は 96 kHz、Move は 44.1 kHz。内部を 96 kHz のまま
-   動かし、前後に高品位なポリフェーズ・リサンプラー（通過帯域 19.5 kHz まで、阻止域
-   88〜93 dB）を置いています。リサンプラー単体の誤差は 18 kHz までで信号比 -95 dB。
-   19.5 kHz より上は帯域制限されます。
-2. **Delay がテープ末尾を越えて読む不具合**: 速度を遅い → 速いへ急に上げた直後などに、
-   読み出し位置がリングバッファの末尾を最大 10 サンプルほど越え、オリジナルはバッファの
-   外のメモリ（実機では隣の RAM の中身）を読みます。再現不能なので、リングの先頭へ
-   折り返しています（本来の意図どおり）。
-3. **周波数シフターの NaN 固着**: Delay / Doppler の後に周波数シフターに入ると、遅延線と
-   共有している領域の値が帰還サンプルとして使われ、それが NaN の形だと無音のまま
-   固まることがあります（実機では電源を切るまで）。周波数シフターに入るときに帰還を 0
-   から始めます。
-4. **電源投入時の立ち上がり**: 実機は電源投入直後、テープが停止状態から立ち上がり、
-   ヘッド距離が 0 から約 0.5 秒かけて設定値に滑ります。Move ではセットを開くたびに
-   インスタンスが作られるので、生成時とプリセット読込時は「既に回っていた」状態から
-   始めます。
-5. **Bit Mangler の負のシフト**: `x << (y >> 12)` のシフト量が負になる場合、Cortex-M4
-   （実機）は 0 を返し、Move の AArch64 は 24 ビットシフトになります。実機の結果を
-   明示的に計算しています。
-6. **出力の DC カット**（上記、OFF にできます）と、**モード等の切替時の 5 ms フェード**。
-7. **入力の正規化検出**: 実機は入力ジャックに何も挿さっていないと入力を 0 にします。
-   ここでは常に「挿さっている」扱いです（CARRIER の入力 1 だけは未接続扱い）。
-   CV 入力は「何も挿さっていない」状態として扱います（各 CV の寄与は 0、LEVEL の CV
-   ジャックは未接続 = ポットがそのままレベルになる）。
+1. **Sample-rate conversion**: Warps runs at 96 kHz, Move at 44.1 kHz. The inside
+   runs at 96 kHz as it is, with high-quality polyphase resamplers before and
+   after (passband to 19.5 kHz, stopband 88–93 dB). The resamplers alone have an
+   error of -95 dB relative to the signal up to 18 kHz. Above 19.5 kHz the band
+   is limited.
+2. **Delay reading past the end of the tape**: right after a sudden change from a
+   slow to a fast speed and the like, the read position goes up to about 10
+   samples past the end of the ring buffer, and the original reads memory outside
+   the buffer (on the hardware, whatever is in the neighbouring RAM). That cannot
+   be reproduced, so it wraps to the start of the ring (as intended).
+3. **The frequency shifter stuck on NaN**: entering the frequency shifter after
+   Delay / Doppler, a value in the region shared with the delay lines is used as
+   the feedback sample, and if it happens to be a NaN pattern it can freeze in
+   silence (on the hardware, until power-off). Entering the frequency shifter now
+   starts the feedback from 0.
+4. **Start-up at power-on**: right after power-on the hardware's tape starts from
+   a stop and the head distance glides from 0 to its setting over about 0.5 s. On
+   Move an instance is created every time a set opens, so creation and preset
+   loads start in the "already running" state.
+5. **Bit Mangler's negative shift**: when the shift amount of `x << (y >> 12)` is
+   negative, the Cortex-M4 (hardware) returns 0 while Move's AArch64 shifts by 24
+   bits. The hardware's result is computed explicitly.
+6. **DC cut on the output** (above; it can be switched off) and **5 ms fades on
+   mode and similar switches**.
+7. **Input normalisation detection**: the hardware zeroes an input when nothing is
+   plugged into its jack. Here inputs are always treated as "plugged" (only
+   CARRIER's input 1 is treated as unplugged). CV inputs are treated as "nothing
+   plugged" (each CV contributes 0, and the LEVEL CV jacks are unplugged = the pot
+   alone sets the level).
 
-## テスト
+## Tests
 
-`scripts/test.sh` が以下をすべて実行します（このマシン上で）。
+`scripts/test.sh` runs all of the following (on this machine).
 
-| テスト | 内容 | 結果 |
+| Test | What | Result |
 |---|---|---|
-| 出所 | 固定コミットのソースを取得し直し、パッチを当てたものと `src/mi` が完全一致 | PASS |
-| **オリジナルとの比較** | オリジナルの Parasites のソース（無改変の `modulator.cc` 等と、ファームウェアの `cv_scaler.cc`）と移植版を同じプログラムにリンクし、9 モード × ボタン 4 状態 × ノブ 5 設定（中央、全部 0、全部最大、偏り、全ノブを全範囲スイープ）× 入力 5 組（サイン、ノコギリ、矩形、ホワイトノイズ、インパルス、無音、ドラムループ）= **900 シナリオ、片側 5760 万サンプル**を比較 | **全シナリオでビット単位一致** |
-| リサンプラー | ラッパー単体（Warps をバイパス）で 50 Hz〜18 kHz の往復誤差 | 最大 -95.3 dB、遅延 103 サンプル |
-| MIX 0% | 9 モードすべてで、出力 = 入力を 103 サンプル遅らせたもの | ビット単位で一致 |
-| 全モード動作 | 9 モード × ボタン 4 × ルーティング 4：ドラムで鳴る、NaN なし、アンダーランなし、無音入力で異常発振なし | PASS |
-| 高フィードバック | DELAY 4 トポロジー・周波数シフターのフィードバック 100% + フルスケールのノイズ | NaN なし（自己発振はモジュール本来の挙動） |
-| モード切替 | サイン入力中に 36 回モード・ルーティングを切替 | クラッシュ・NaN なし |
-| 状態保存 | 全 61 パラメータを JSON（version 1）で保存・復元、古い／未知のキーの扱い、壊れた JSON の拒否 | PASS |
-| 複数インスタンス | 5 モードの組み合わせで、2 インスタンスを交互に処理しても単独と同じ出力 | PASS |
-| 異常値 | 全パラメータに nan / inf / 1e30 / 空文字 / 文字列 | 範囲内に収まる |
-| オシレーターのピッチ | PITCH 57 = 220 Hz、MIDI A4（PITCH 60）= 440 Hz | PASS |
-| バイパス / PRESERVE / MAIN ONLY / OPEN LOOP | | PASS |
-| リアルタイム安全 | 全エントリーポイントで malloc/free の呼び出し回数 | 0 回 |
-| ASan + UBSan | 上記のエンジンテスト全体 | PASS |
-| UI | Schwung 実機と同じページエンジン（デバイスの `shared/`）で、9 モードのページ、ノブ 1 = MIX、MODE でページ切替、OSC で PITCH に入れ替わり、Settings | PASS |
-| ARM64 ビルド | AArch64、glibc 2.27 以下、エクスポートは 1 シンボルだけ、malloc/new/mutex を参照しない | PASS |
-| ライセンス | 全取り込みファイルの MIT 表記、コピーレフトの文言なし | PASS |
+| Provenance | The source at the pinned commit is fetched again, and with the patches applied it matches `src/mi` exactly | PASS |
+| **Against the original** | The original Parasites source (unmodified `modulator.cc` etc. and the firmware's `cv_scaler.cc`) and the port are linked into the same program and compared over 9 modes × 4 button states × 5 knob settings (centre, all 0, all maximum, skewed, every knob swept over its full range) × 5 input sets (sine, saw, square, white noise, impulse, silence, drum loop) = **900 scenarios, 57.6 million samples per side** | **Bit-identical in every scenario** |
+| Resampler | Round-trip error of the wrapper alone (Warps bypassed), 50 Hz – 18 kHz | at most -95.3 dB, 103 samples of latency |
+| MIX 0% | In all 9 modes, output = the input delayed by 103 samples | Bit-identical |
+| Every mode works | 9 modes × 4 buttons × 4 routings: sounds with drums, no NaN, no underruns, no runaway oscillation with silent input | PASS |
+| High feedback | Feedback 100 % in the 4 DELAY topologies and the frequency shifter + full-scale noise | No NaN (self-oscillation is the module's own behaviour) |
+| Mode switching | 36 mode and routing switches during a sine input | No crash, no NaN |
+| Saved state | All 61 parameters saved and restored as JSON (version 1), handling of old/unknown keys, rejection of broken JSON | PASS |
+| Multiple instances | Over combinations of 5 modes, two instances processed alternately give the same output as one alone | PASS |
+| Abnormal values | nan / inf / 1e30 / empty string / text for every parameter | Kept within range |
+| Oscillator pitch | PITCH 57 = 220 Hz, MIDI A4 (PITCH 60) = 440 Hz | PASS |
+| Bypass / PRESERVE / MAIN ONLY / OPEN LOOP | | PASS |
+| Realtime safety | Number of malloc/free calls in every entry point | 0 |
+| ASan + UBSan | The whole engine test above | PASS |
+| UI | With the same page engine as a real Schwung (the device's `shared/`): the 9 modes' pages, knob 1 = MIX, page switching with MODE, PITCH replacing LEVEL1 with OSC, Settings | PASS |
+| ARM64 build | AArch64, glibc 2.27 or older, a single exported symbol, no reference to malloc/new/mutex | PASS |
+| Licence | An MIT notice in every imported file, no copyleft wording | PASS |
 
-比較テストで一致を確認する際、参照側（オリジナル）にも次の 3 点だけ同じ修正を当てています。
-いずれも「このビルドマシンでの未定義動作の答え」ではなく「モジュールの答え」に揃えるための
-もので、そうしないと比較そのものが成り立ちません：Bit Mangler の負のシフト（Cortex-M4 の
-結果）、Delay のテープ末尾越えの読み出し（オリジナルはバッファ外を読むため、ビルドごとに
-読む値が違う）、x86 でのみ NaN・範囲外の float→int 変換（ARM と同じ飽和に）。
-Move（AArch64）上で走らせる場合、3 つ目は当てません。
+For the comparison to match, the reference side (the original) gets only these
+three same fixes. Each aligns the answer with "the module's answer" rather than
+"this build machine's answer to undefined behaviour"; without them the comparison
+itself would be meaningless: Bit Mangler's negative shift (the Cortex-M4 result),
+Delay's read past the end of the tape (the original reads outside the buffer, so
+the value read differs per build), and float→int conversions of NaN and
+out-of-range values that only x86 does differently (saturating as on ARM). When
+run on Move (AArch64) the third is not applied.
 
-### 実機（Move）で行うもの: `scripts/bench_move.sh`
+### Done on the device (Move): `scripts/bench_move.sh`
 
-ARM64 版の比較テスト（上記と同じ 900 シナリオ）と、実機での負荷測定（9 モード ×
-ボタン 4 × DUAL/PRESERVE の処理時間の平均・99 パーセンタイル・最大、メモリ、生成時間）を
-Move 上で行います。
+Runs the ARM64 comparison test (the same 900 scenarios as above) and a load
+measurement on the device (mean, 99th percentile and maximum processing time over
+9 modes × 4 buttons × DUAL/PRESERVE, memory, creation time) on the Move.
 
-**Move での結果（2026-10-22）**
+**Results on Move (2026-10-22)**
 
-- ARM64 版の比較テスト: 900 シナリオすべてオリジナルとビット単位で一致。
-- 1 ブロック（128 フレーム、予算 2902 µs）あたりの平均処理時間（通常優先度、コア 0〜2、
-  ドラムループ入力、ノブ 2 をスイープ）:
+- ARM64 comparison test: all 900 scenarios bit-identical to the original.
+- Mean processing time per block (128 frames, budget 2902 µs) (normal priority,
+  cores 0–2, drum-loop input, knob 2 swept):
 
-| モード | DUAL | PRESERVE |
+| Mode | DUAL | PRESERVE |
 |---|---|---|
-| DOPPLER | 245〜304 µs（8.5〜10.5 %） | （DUAL と同じ処理）253〜332 µs |
-| WAVEFOLDER | 289〜317 µs（10〜11 %） | 380〜472 µs（13〜16 %） |
-| CHEBYSCHEV | 352〜388 µs（12〜13 %） | 502〜562 µs（17〜19 %） |
-| FREQ SHIFT | 280〜318 µs（10〜11 %） | 350〜443 µs（12〜15 %） |
-| BIT MANGLER | 220〜244 µs（8 %） | 282〜307 µs（10〜11 %） |
-| COMPARATOR | 330〜376 µs（11〜13 %） | 450〜485 µs（16〜17 %） |
-| VOCODER | 396〜468 µs（14〜16 %） | 627〜647 µs（22 %） |
-| DELAY | 216〜265 µs（7.5〜9 %） | （DUAL と同じ処理）219〜259 µs |
-| META | 333〜361 µs（12 %） | 462〜488 µs（16〜17 %） |
+| DOPPLER | 245–304 µs (8.5–10.5 %) | (same processing as DUAL) 253–332 µs |
+| WAVEFOLDER | 289–317 µs (10–11 %) | 380–472 µs (13–16 %) |
+| CHEBYSCHEV | 352–388 µs (12–13 %) | 502–562 µs (17–19 %) |
+| FREQ SHIFT | 280–318 µs (10–11 %) | 350–443 µs (12–15 %) |
+| BIT MANGLER | 220–244 µs (8 %) | 282–307 µs (10–11 %) |
+| COMPARATOR | 330–376 µs (11–13 %) | 450–485 µs (16–17 %) |
+| VOCODER | 396–468 µs (14–16 %) | 627–647 µs (22 %) |
+| DELAY | 216–265 µs (7.5–9 %) | (same processing as DUAL) 219–259 µs |
+| META | 333–361 µs (12 %) | 462–488 µs (16–17 %) |
 
-  最も重いのは **VOCODER の PRESERVE（平均 647 µs、22 %）**。最大値（1〜3 ms 程度、
-  1 回だけ 11.8 ms）は通常優先度で測っているため Move 本体の処理による中断を含みます。
-  アンダーラン 0、NaN リセット 0。
-- メモリ: ライブラリ読み込みで RSS +460 kB、1 インスタンス動作で +372 kB。
-- create_instance 0.89 ms、プリセット読込 0.05 ms。
-- インストール済み（md5 一致）。画面での操作と試聴は未確認です。
+  The heaviest is **VOCODER in PRESERVE (mean 647 µs, 22 %)**. The maxima (around
+  1–3 ms, once 11.8 ms) were measured at normal priority, so they include
+  interruptions by Move's own processing. 0 underruns, 0 NaN resets.
+- Memory: RSS +460 kB on loading the library, +372 kB with one instance running.
+- create_instance 0.89 ms, preset load 0.05 ms.
+- Installed (md5 matches). Operation on screen and listening are not yet checked.
 
-## ビルドとインストール
+## Building and installing
 
-必要なもの: Linux または Windows の WSL2、`g++`、`aarch64-linux-gnu-g++`
-（Debian/Ubuntu では `g++-aarch64-linux-gnu`）、Python 3、git。UI テストには Node.js と
-Schwung のチェックアウト（`../schwung`）。
+Requirements: Linux or Windows WSL2, `g++`, `aarch64-linux-gnu-g++`
+(`g++-aarch64-linux-gnu` on Debian/Ubuntu), Python 3, git. The UI tests need
+Node.js and a Schwung checkout (`../schwung`).
 
 ```bash
 scripts/build.sh arm64
 ```
 
-`dist/owarps_parasites-module.tar.gz` ができます。Schwung Manager 経由でインストール:
+This produces `dist/owarps_parasites-module.tar.gz`. Install through Schwung Manager:
 
 ```bash
 python3 scripts/install.py http://move.local:7700
 ```
 
-インストール後は Move を再起動してください。
+Restart Move after installing.
 
-テスト:
+Tests:
 
 ```bash
 scripts/test.sh
@@ -276,21 +295,21 @@ scripts/test.sh
 scripts/bench_move.sh ableton@move.local
 ```
 
-## ファイル
+## Files
 
 | | |
 |---|---|
-| `src/mi/` | Parasites の Warps DSP と stmlib（取り込み、`patches/` 適用済み） |
-| `src/wrapper/engine.*` | リサンプリング、ブロック化、ルーティング、MIX、フェード、DC カット |
-| `src/wrapper/cv_reader.h` | ファームウェアのポット読み取り（`cv_scaler.cc`）の書き写し |
-| `src/wrapper/resampler.h` | ポリフェーズ・リサンプラー |
-| `src/plugin.cpp` | Schwung Audio FX API v2 のエントリーポイント、状態保存 |
-| `scripts/param_spec.py` | 全パラメータとページ構成の定義（`module.json` の chain_params と DSP 内の表・ui_hierarchy はここから生成） |
-| `scripts/gen_tables.py` | リサンプラーの係数（往復が整数サンプルになる設計） |
-| `scripts/fetch_warps.sh` | 取得元の固定コミットと、取り込みの検証 |
-| `tests/` | 上記のテスト |
+| `src/mi/` | Parasites' Warps DSP and stmlib (imported, `patches/` applied) |
+| `src/wrapper/engine.*` | Resampling, blocking, routing, MIX, fades, DC cut |
+| `src/wrapper/cv_reader.h` | A transcription of the firmware's pot reading (`cv_scaler.cc`) |
+| `src/wrapper/resampler.h` | Polyphase resampler |
+| `src/plugin.cpp` | Entry points of the Schwung Audio FX API v2, saved state |
+| `scripts/param_spec.py` | Definition of every parameter and the page layout (`module.json`'s chain_params and the DSP's tables and ui_hierarchy are generated from it) |
+| `scripts/gen_tables.py` | Resampler coefficients (designed so the round trip is a whole number of samples) |
+| `scripts/fetch_warps.sh` | The pinned source commit and verification of the import |
+| `tests/` | The tests above |
 
-## ライセンス
+## Licence
 
-このモジュールのコードは MIT（`LICENSE`）。取り込んだ Mutable Instruments / Parasites /
-stmlib のコードも MIT です。詳細は `THIRD_PARTY_LICENSES.md`。
+This module's code is MIT (`LICENSE`). The imported Mutable Instruments /
+Parasites / stmlib code is MIT too. Details in `THIRD_PARTY_LICENSES.md`.
